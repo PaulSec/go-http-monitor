@@ -1,0 +1,12 @@
+insecure: false
+timeout_seconds: 5
+checks:
+  - url: "https://www.cfptime.org"
+    status_code: 200
+    match: "Loading<"
+  - url: "https://shodan.io/"
+    status_code: 200
+    match: "the Internet of Things"
+  - url: "https://urlthatdoesnotexist.foobar"
+    status_code: 500
+    match: "the Internet of Things"    
