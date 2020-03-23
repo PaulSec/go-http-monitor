@@ -41,7 +41,6 @@ func main() {
 	flag.Parse()
 
 	hostUnreachable := false
-	fmt.Println(*filenamePtr)
 	file, err := os.Open(*filenamePtr)
 	if err != nil {
 		log.Fatal(err)

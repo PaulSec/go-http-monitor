@@ -7,7 +7,7 @@ Everything is configurable through a YAML file (`monitor.yml`) and looks like th
 ```yaml
 insecure: false
 timeout_seconds: 5
-plugins:
+checks:
   - url: "https://www.cfptime.org"
     status_code: 200
     match: "Loading"
