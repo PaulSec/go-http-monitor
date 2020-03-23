@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/tls"
+	"flag"
 	"fmt"
 	_ "fmt"
 	"io/ioutil"
@@ -36,8 +37,12 @@ type Config struct {
 
 func main() {
 
+	filenamePtr := flag.String("file", "monitor.yml", "Monitoring file")
+	flag.Parse()
+
 	hostUnreachable := false
-	file, err := os.Open("monitor.yml")
+	fmt.Println(*filenamePtr)
+	file, err := os.Open(*filenamePtr)
 	if err != nil {
 		log.Fatal(err)
 	}
