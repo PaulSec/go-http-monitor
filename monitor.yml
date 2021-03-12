@@ -1,12 +1,13 @@
 insecure: false
-timeout_seconds: 5
+timeout_seconds: 10
 checks:
   - url: "https://www.cfptime.org"
     status_code: 200
     match: "Loading<"
+    response_time: 210
   - url: "https://shodan.io/"
     status_code: 200
     match: "the Internet of Things"
   - url: "https://urlthatdoesnotexist.foobar"
     status_code: 500
-    match: "the Internet of Things"    
+    match: "the Internet of Things"

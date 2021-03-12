@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -29,9 +30,10 @@ type Config struct {
 	Insecure       bool `yaml:"insecure"`
 	TimeoutRequest int  `yaml:"timeout_seconds"`
 	Checks         []struct {
-		URL        string  `yaml:"url"`
-		StatusCode *int    `yaml:"status_code"`
-		Match      *string `yaml:"match"`
+		URL          string  `yaml:"url"`
+		StatusCode   *int    `yaml:"status_code"`
+		Match        *string `yaml:"match"`
+		ResponseTime *int    `yaml:"response_time"`
 	} `yaml:"checks"`
 }
 
@@ -64,7 +66,12 @@ func main() {
 		_ = index
 		tmpString := ""
 
+		start := time.Now()
+
 		resp, err := client.Get(plugin.URL)
+
+		t := time.Now()
+		elapsed := t.Sub(start)
 
 		// if we fail connecting to the host
 		if err != nil {
@@ -89,6 +96,18 @@ func main() {
 			fmt.Printf(ErrorColor, tmpString)
 			hostUnreachable = true
 			continue
+		}
+
+		// if plugin.ResponseTime != nil && int64(*plugin.ResponseTime) < int64(elapsed) {
+		if plugin.ResponseTime != nil {
+			responseTimeDuration := time.Duration(*plugin.ResponseTime) * time.Millisecond
+			if responseTimeDuration-elapsed < 0 {
+				responseTime := strconv.Itoa(*plugin.ResponseTime)
+				tmpString = "[NOK]  " + plugin.URL + ", Elapsed time: " + elapsed.String() + " instead of " + responseTime + "\n"
+				fmt.Printf(ErrorColor, tmpString)
+				hostUnreachable = true
+				continue
+			}
 		}
 
 		tmpString = "[OK] " + plugin.URL + "\n"

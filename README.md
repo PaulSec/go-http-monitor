@@ -11,6 +11,7 @@ checks:
   - url: "https://www.cfptime.org"
     status_code: 200
     match: "Loading"
+    response_time: 210
   - url: "https://shodan.io/"
     status_code: 200
     match: "the Internet of Things"
