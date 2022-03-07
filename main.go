@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/tls"
+	"encoding/json"
 	"flag"
 	"fmt"
 	_ "fmt"
@@ -37,6 +38,17 @@ type Config struct {
 	} `yaml:"checks"`
 }
 
+// Config has been created
+type CheckOutput struct {
+	URL     string `json:"url"`
+	Status  string `json:"available"`
+	Elapsed string `json:"elapsed"`
+}
+
+type JsonOutput struct {
+	Results []CheckOutput `json:"checks"`
+}
+
 func main() {
 
 	filenamePtr := flag.String("file", "monitor.yml", "Monitoring file")
@@ -56,6 +68,8 @@ func main() {
 	if err != nil {
 		log.Fatalf("error: %v", err)
 	}
+
+	results := &JsonOutput{}
 
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: y.Insecure}
 	client := http.Client{
@@ -78,6 +92,14 @@ func main() {
 			tmpString = "[NOK] " + plugin.URL + "\n"
 			fmt.Printf(ErrorColor, tmpString)
 			hostUnreachable = true
+
+			check := &CheckOutput{
+				URL:     plugin.URL,
+				Status:  strconv.FormatBool(!hostUnreachable),
+				Elapsed: elapsed.String(),
+			}
+			results.Results = append(results.Results, *check)
+
 			continue
 		}
 
@@ -86,6 +108,13 @@ func main() {
 			tmpString = "[NOK] " + plugin.URL + "\n"
 			fmt.Printf(ErrorColor, tmpString)
 			hostUnreachable = true
+
+			check := &CheckOutput{
+				URL:     plugin.URL,
+				Status:  strconv.FormatBool(!hostUnreachable),
+				Elapsed: elapsed.String(),
+			}
+			results.Results = append(results.Results, *check)
 			continue
 		}
 
@@ -95,6 +124,13 @@ func main() {
 			tmpString = "[NOK] " + plugin.URL + "\n"
 			fmt.Printf(ErrorColor, tmpString)
 			hostUnreachable = true
+
+			check := &CheckOutput{
+				URL:     plugin.URL,
+				Status:  strconv.FormatBool(!hostUnreachable),
+				Elapsed: elapsed.String(),
+			}
+			results.Results = append(results.Results, *check)
 			continue
 		}
 
@@ -106,13 +142,34 @@ func main() {
 				tmpString = "[NOK]  " + plugin.URL + ", Elapsed time: " + elapsed.String() + " instead of " + responseTime + "\n"
 				fmt.Printf(ErrorColor, tmpString)
 				hostUnreachable = true
+
+				check := &CheckOutput{
+					URL:     plugin.URL,
+					Status:  strconv.FormatBool(!hostUnreachable),
+					Elapsed: elapsed.String(),
+				}
+				results.Results = append(results.Results, *check)
 				continue
 			}
 		}
 
+		hostUnreachable = false
 		tmpString = "[OK] " + plugin.URL + "\n"
 		fmt.Printf(NoticeColor, tmpString)
+
+		check := &CheckOutput{
+			URL:     plugin.URL,
+			Status:  strconv.FormatBool(!hostUnreachable),
+			Elapsed: elapsed.String(),
+		}
+		results.Results = append(results.Results, *check)
 	}
+
+	// jsonData, err := json.Marshal(results)
+	// fmt.Println(string(jsonData))
+
+	jsonFile, _ := json.MarshalIndent(results, "", " ")
+	_ = ioutil.WriteFile("output.json", jsonFile, 0644)
 
 	if hostUnreachable {
 		os.Exit(1)
