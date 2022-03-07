@@ -14,7 +14,7 @@ on:
   pull_request:
 
 env:
-  IMAGE_NAME: httpmonitor
+  IMAGE_NAME: http-monitor
 
 jobs:
   # Run tests.
