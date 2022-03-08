@@ -49,6 +49,16 @@ type JsonOutput struct {
 	Results []CheckOutput `json:"checks"`
 }
 
+func addEntry(results []CheckOutput, url string, active bool, elapsed time.Duration) []CheckOutput {
+	check := &CheckOutput{
+		URL:     url,
+		Status:  strconv.FormatBool(!active),
+		Elapsed: elapsed.String(),
+	}
+	results = append(results, *check)
+	return results
+}
+
 func main() {
 
 	filenamePtr := flag.String("file", "monitor.yml", "Monitoring file")
@@ -93,13 +103,7 @@ func main() {
 			fmt.Printf(ErrorColor, tmpString)
 			hostUnreachable = true
 
-			check := &CheckOutput{
-				URL:     plugin.URL,
-				Status:  strconv.FormatBool(!hostUnreachable),
-				Elapsed: elapsed.String(),
-			}
-			results.Results = append(results.Results, *check)
-
+			results.Results = addEntry(results.Results, plugin.URL, hostUnreachable, elapsed)
 			continue
 		}
 
@@ -109,12 +113,7 @@ func main() {
 			fmt.Printf(ErrorColor, tmpString)
 			hostUnreachable = true
 
-			check := &CheckOutput{
-				URL:     plugin.URL,
-				Status:  strconv.FormatBool(!hostUnreachable),
-				Elapsed: elapsed.String(),
-			}
-			results.Results = append(results.Results, *check)
+			results.Results = addEntry(results.Results, plugin.URL, hostUnreachable, elapsed)
 			continue
 		}
 
@@ -125,16 +124,11 @@ func main() {
 			fmt.Printf(ErrorColor, tmpString)
 			hostUnreachable = true
 
-			check := &CheckOutput{
-				URL:     plugin.URL,
-				Status:  strconv.FormatBool(!hostUnreachable),
-				Elapsed: elapsed.String(),
-			}
-			results.Results = append(results.Results, *check)
+			results.Results = addEntry(results.Results, plugin.URL, hostUnreachable, elapsed)
 			continue
 		}
 
-		// if plugin.ResponseTime != nil && int64(*plugin.ResponseTime) < int64(elapsed) {
+		// if http response takes more time than expected
 		if plugin.ResponseTime != nil {
 			responseTimeDuration := time.Duration(*plugin.ResponseTime) * time.Millisecond
 			if responseTimeDuration-elapsed < 0 {
@@ -143,34 +137,20 @@ func main() {
 				fmt.Printf(ErrorColor, tmpString)
 				hostUnreachable = true
 
-				check := &CheckOutput{
-					URL:     plugin.URL,
-					Status:  strconv.FormatBool(!hostUnreachable),
-					Elapsed: elapsed.String(),
-				}
-				results.Results = append(results.Results, *check)
+				results.Results = addEntry(results.Results, plugin.URL, hostUnreachable, elapsed)
 				continue
 			}
 		}
 
-		hostUnreachable = false
 		tmpString = "[OK] " + plugin.URL + "\n"
 		fmt.Printf(NoticeColor, tmpString)
-
-		check := &CheckOutput{
-			URL:     plugin.URL,
-			Status:  strconv.FormatBool(!hostUnreachable),
-			Elapsed: elapsed.String(),
-		}
-		results.Results = append(results.Results, *check)
+		results.Results = addEntry(results.Results, plugin.URL, true, elapsed)
 	}
-
-	// jsonData, err := json.Marshal(results)
-	// fmt.Println(string(jsonData))
 
 	jsonFile, _ := json.MarshalIndent(results, "", " ")
 	_ = ioutil.WriteFile("output.json", jsonFile, 0644)
 
+	// if any host is unreachable, exit(1) to fail execution
 	if hostUnreachable {
 		os.Exit(1)
 	}
