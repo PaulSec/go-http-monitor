@@ -11,3 +11,6 @@ checks:
   - url: "https://urlthatdoesnotexist.foobar"
     status_code: 500
     match: "the Internet of Things"
+  - tcp: 127.0.0.1
+    port: 8080
+    response_time: 1

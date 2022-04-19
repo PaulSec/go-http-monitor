@@ -8,6 +8,7 @@ import (
 	_ "fmt"
 	"io/ioutil"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"strconv"
@@ -35,14 +36,16 @@ type Config struct {
 		StatusCode   *int    `yaml:"status_code"`
 		Match        *string `yaml:"match"`
 		ResponseTime *int    `yaml:"response_time"`
+		TCP          string  `yaml:"tcp"`
+		Port         *int    `yaml:"port"`
 	} `yaml:"checks"`
 }
 
 // Config has been created
 type CheckOutput struct {
-	URL     string `json:"url"`
-	Status  string `json:"available"`
-	Elapsed string `json:"elapsed"`
+	Resource string `json:"resource"`
+	Status   string `json:"available"`
+	Elapsed  string `json:"elapsed"`
 }
 
 type JsonOutput struct {
@@ -51,9 +54,9 @@ type JsonOutput struct {
 
 func addEntry(results []CheckOutput, url string, active bool, elapsed time.Duration) []CheckOutput {
 	check := &CheckOutput{
-		URL:     url,
-		Status:  strconv.FormatBool(!active),
-		Elapsed: elapsed.String(),
+		Resource: url,
+		Status:   strconv.FormatBool(!active),
+		Elapsed:  elapsed.String(),
 	}
 	results = append(results, *check)
 	return results
@@ -92,59 +95,88 @@ func main() {
 
 		start := time.Now()
 
-		resp, err := client.Get(plugin.URL)
-
 		t := time.Now()
-		elapsed := t.Sub(start)
 
-		// if we fail connecting to the host
-		if err != nil {
-			tmpString = "[NOK] " + plugin.URL + "\n"
-			fmt.Printf(ErrorColor, tmpString)
-			hostUnreachable = true
+		if strings.Contains(plugin.URL, "http") {
+			resp, err := client.Get(plugin.URL)
+			elapsed := t.Sub(start)
 
-			results.Results = addEntry(results.Results, plugin.URL, hostUnreachable, elapsed)
-			continue
-		}
-
-		// if the status code does not correspond
-		if plugin.StatusCode != nil && *plugin.StatusCode != resp.StatusCode {
-			tmpString = "[NOK] " + plugin.URL + "\n"
-			fmt.Printf(ErrorColor, tmpString)
-			hostUnreachable = true
-
-			results.Results = addEntry(results.Results, plugin.URL, hostUnreachable, elapsed)
-			continue
-		}
-
-		// if your search string does not appear in the response body
-		content, err := ioutil.ReadAll(resp.Body)
-		if plugin.Match != nil && !strings.Contains(string(content), *plugin.Match) {
-			tmpString = "[NOK] " + plugin.URL + "\n"
-			fmt.Printf(ErrorColor, tmpString)
-			hostUnreachable = true
-
-			results.Results = addEntry(results.Results, plugin.URL, hostUnreachable, elapsed)
-			continue
-		}
-
-		// if http response takes more time than expected
-		if plugin.ResponseTime != nil {
-			responseTimeDuration := time.Duration(*plugin.ResponseTime) * time.Millisecond
-			if responseTimeDuration-elapsed < 0 {
-				responseTime := strconv.Itoa(*plugin.ResponseTime)
-				tmpString = "[NOK]  " + plugin.URL + ", Elapsed time: " + elapsed.String() + " instead of " + responseTime + "\n"
+			// if we fail connecting to the host
+			if err != nil {
+				tmpString = "[NOK] " + plugin.URL + "\n"
 				fmt.Printf(ErrorColor, tmpString)
 				hostUnreachable = true
 
 				results.Results = addEntry(results.Results, plugin.URL, hostUnreachable, elapsed)
 				continue
 			}
-		}
 
-		tmpString = "[OK] " + plugin.URL + "\n"
-		fmt.Printf(NoticeColor, tmpString)
-		results.Results = addEntry(results.Results, plugin.URL, true, elapsed)
+			// if the status code does not correspond
+			if plugin.StatusCode != nil && *plugin.StatusCode != resp.StatusCode {
+				tmpString = "[NOK] " + plugin.URL + "\n"
+				fmt.Printf(ErrorColor, tmpString)
+				hostUnreachable = true
+
+				results.Results = addEntry(results.Results, plugin.URL, hostUnreachable, elapsed)
+				continue
+			}
+
+			// if your search string does not appear in the response body
+			content, err := ioutil.ReadAll(resp.Body)
+			if plugin.Match != nil && !strings.Contains(string(content), *plugin.Match) {
+				tmpString = "[NOK] " + plugin.URL + "\n"
+				fmt.Printf(ErrorColor, tmpString)
+				hostUnreachable = true
+
+				results.Results = addEntry(results.Results, plugin.URL, hostUnreachable, elapsed)
+				continue
+			}
+
+			// if http response takes more time than expected
+			if plugin.ResponseTime != nil {
+				responseTimeDuration := time.Duration(*plugin.ResponseTime) * time.Millisecond
+				if responseTimeDuration-elapsed < 0 {
+					responseTime := strconv.Itoa(*plugin.ResponseTime)
+					tmpString = "[NOK]  " + plugin.URL + ", Elapsed time: " + elapsed.String() + " instead of " + responseTime + "\n"
+					fmt.Printf(ErrorColor, tmpString)
+					hostUnreachable = true
+
+					results.Results = addEntry(results.Results, plugin.URL, hostUnreachable, elapsed)
+					continue
+				}
+			}
+
+			tmpString = "[OK] " + plugin.URL + "\n"
+			fmt.Printf(NoticeColor, tmpString)
+			results.Results = addEntry(results.Results, plugin.URL, true, elapsed)
+		} else if plugin.TCP != "" {
+			servAddr := plugin.TCP + ":" + strconv.Itoa(*plugin.Port)
+			tcpAddr, err := net.ResolveTCPAddr("tcp", servAddr)
+			conn, err := net.DialTCP("tcp", nil, tcpAddr)
+			_ = conn
+			// fmt.Println("Foobar?")
+			elapsed := t.Sub(start)
+			if err != nil { // error on tcp connect
+				hostUnreachable = true
+				tmpString = "[NOK] TCP:" + servAddr + "\n"
+				fmt.Printf(ErrorColor, tmpString)
+				results.Results = addEntry(results.Results, servAddr, hostUnreachable, elapsed)
+				continue
+			} else if plugin.ResponseTime != nil { // error on connection
+				responseTimeDuration := time.Duration(*plugin.ResponseTime) * time.Millisecond
+				if responseTimeDuration-elapsed < 0 {
+					responseTime := strconv.Itoa(*plugin.ResponseTime)
+					tmpString = "[NOK] TCP:" + servAddr + ", Elapsed time: " + elapsed.String() + " instead of " + responseTime + "\n"
+					fmt.Printf(ErrorColor, tmpString)
+					hostUnreachable = true
+					results.Results = addEntry(results.Results, plugin.URL, hostUnreachable, elapsed)
+					continue
+				}
+			}
+			tmpString = "[OK] TCP:" + servAddr + "\n"
+			fmt.Printf(NoticeColor, tmpString)
+			results.Results = addEntry(results.Results, servAddr, true, elapsed)
+		}
 	}
 
 	jsonFile, _ := json.MarshalIndent(results, "", " ")
