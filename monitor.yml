@@ -1,5 +1,6 @@
 insecure: false
 timeout_seconds: 10
+verbose: false
 checks:
   - url: "https://www.cfptime.org"
     status_code: 200

@@ -31,6 +31,7 @@ const (
 type Config struct {
 	Insecure       bool `yaml:"insecure"`
 	TimeoutRequest int  `yaml:"timeout_seconds"`
+	Verbose        bool `yaml: "insecure"`
 	Checks         []struct {
 		URL          string  `yaml:"url"`
 		StatusCode   *int    `yaml:"status_code"`
@@ -111,6 +112,14 @@ func main() {
 				continue
 			}
 
+			content, err := ioutil.ReadAll(resp.Body)
+			if y.Verbose {
+				tmpString = "URL : " + plugin.URL + "\n"
+				// tmpString += "Status Code : " + string(resp.StatusCode) + "\n"
+				tmpString += "Body : " + string(content)
+				fmt.Println(tmpString)
+			}
+
 			// if the status code does not correspond
 			if plugin.StatusCode != nil && *plugin.StatusCode != resp.StatusCode {
 				tmpString = "[NOK] " + plugin.URL + "\n"
@@ -122,7 +131,6 @@ func main() {
 			}
 
 			// if your search string does not appear in the response body
-			content, err := ioutil.ReadAll(resp.Body)
 			if plugin.Match != nil && !strings.Contains(string(content), *plugin.Match) {
 				tmpString = "[NOK] " + plugin.URL + "\n"
 				fmt.Printf(ErrorColor, tmpString)
