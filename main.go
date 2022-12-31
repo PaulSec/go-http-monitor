@@ -97,11 +97,9 @@ func main() {
 
 		start := time.Now()
 
-		t := time.Now()
-
 		if strings.Contains(plugin.URL, "http") {
 			resp, err := client.Get(plugin.URL)
-			elapsed := t.Sub(start)
+			elapsed := time.Since(start)
 
 			// if we fail connecting to the host
 			if err != nil {
@@ -164,7 +162,7 @@ func main() {
 			conn, err := net.DialTCP("tcp", nil, tcpAddr)
 			_ = conn
 			// fmt.Println("Foobar?")
-			elapsed := t.Sub(start)
+			elapsed := time.Since(start)
 			if err != nil { // error on tcp connect
 				hostUnreachable = true
 				tmpString = "[NOK] TCP:" + servAddr + "\n"
