@@ -6,7 +6,8 @@ import (
 	"flag"
 	"fmt"
 	_ "fmt"
-	"io/ioutil"
+	"io"
+
 	"log"
 	"net"
 	"net/http"
@@ -74,7 +75,7 @@ func main() {
 		log.Fatal(err)
 	}
 	defer file.Close()
-	data, err := ioutil.ReadAll(file)
+	data, err := io.ReadAll(file)
 
 	y := Config{}
 
@@ -112,7 +113,7 @@ func main() {
 				continue
 			}
 
-			content, err := ioutil.ReadAll(resp.Body)
+			content, err := io.ReadAll(resp.Body)
 			if y.Verbose {
 				tmpString = "URL : " + plugin.URL + "\n"
 				// tmpString += "Status Code : " + string(resp.StatusCode) + "\n"
@@ -188,7 +189,7 @@ func main() {
 	}
 
 	jsonFile, _ := json.MarshalIndent(results, "", " ")
-	_ = ioutil.WriteFile("output.json", jsonFile, 0644)
+	_ = os.WriteFile("output.json", jsonFile, 0644)
 
 	// if any host is unreachable, exit(1) to fail execution
 	if hostUnreachable {
