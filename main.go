@@ -6,7 +6,8 @@ import (
 	"flag"
 	"fmt"
 	_ "fmt"
-	"io/ioutil"
+	"io"
+
 	"log"
 	"net"
 	"net/http"
@@ -74,7 +75,7 @@ func main() {
 		log.Fatal(err)
 	}
 	defer file.Close()
-	data, err := ioutil.ReadAll(file)
+	data, err := io.ReadAll(file)
 
 	y := Config{}
 
@@ -96,11 +97,9 @@ func main() {
 
 		start := time.Now()
 
-		t := time.Now()
-
 		if strings.Contains(plugin.URL, "http") {
 			resp, err := client.Get(plugin.URL)
-			elapsed := t.Sub(start)
+			elapsed := time.Since(start)
 
 			// if we fail connecting to the host
 			if err != nil {
@@ -112,7 +111,7 @@ func main() {
 				continue
 			}
 
-			content, err := ioutil.ReadAll(resp.Body)
+			content, err := io.ReadAll(resp.Body)
 			if y.Verbose {
 				tmpString = "URL : " + plugin.URL + "\n"
 				// tmpString += "Status Code : " + string(resp.StatusCode) + "\n"
@@ -163,7 +162,7 @@ func main() {
 			conn, err := net.DialTCP("tcp", nil, tcpAddr)
 			_ = conn
 			// fmt.Println("Foobar?")
-			elapsed := t.Sub(start)
+			elapsed := time.Since(start)
 			if err != nil { // error on tcp connect
 				hostUnreachable = true
 				tmpString = "[NOK] TCP:" + servAddr + "\n"
@@ -188,7 +187,7 @@ func main() {
 	}
 
 	jsonFile, _ := json.MarshalIndent(results, "", " ")
-	_ = ioutil.WriteFile("output.json", jsonFile, 0644)
+	_ = os.WriteFile("output.json", jsonFile, 0644)
 
 	// if any host is unreachable, exit(1) to fail execution
 	if hostUnreachable {
